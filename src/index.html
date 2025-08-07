@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Text-to-Image</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --container-bg: white;
+            --text-color: #333;
+            --input-border-color: #ccc;
+            --input-bg-color: white;
+            --button-bg-color: #007bff;
+            --button-hover-bg-color: #0056b3;
+            --switch-border-color: #ccc;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --input-border-color: #555;
+            --input-bg-color: #333;
+            --button-bg-color: #0056b3;
+            --button-hover-bg-color: #003d80;
+            --switch-border-color: #555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+            background: var(--container-bg);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: background-color 0.3s;
+        }
+        .top-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .language-switcher button, .theme-switcher button {
+            background: none;
+            border: 1px solid var(--switch-border-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .language-switcher button.active {
+            background-color: var(--button-bg-color);
+            color: white;
+            border-color: var(--button-bg-color);
+        }
+        input[type="text"], select {
+            width: 300px;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid var(--input-border-color);
+            background-color: var(--input-bg-color);
+            color: var(--text-color);
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            background-color: var(--button-bg-color);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: var(--button-hover-bg-color);
+        }
+        #result {
+            margin-top: 20px;
+        }
+        img {
+            max-width: 100%;
+            max-height: 512px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .model-description {
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="top-controls">
+        <div class="language-switcher">
+            <button id="lang-zh" class="active">简体中文</button>
+            <button id="lang-en">English</button>
+        </div>
+        <div class="theme-switcher">
+            <button id="theme-toggle">🌙</button>
+        </div>
+    </div>
+    <div class="container">
+        <h1 data-i18n="title">AI 文生图</h1>
+        <form id="image-form">
+            <div class="form-group">
+                <label for="model" data-i18n="modelLabel">选择模型:</label>
+                <select id="model" name="model">
+                    <option value="@cf/stabilityai/stable-diffusion-xl-base-1.0" selected data-i18n="modelSdxl">Stable Diffusion XL (通用)</option>
+                    <option value="@cf/bytedance/stable-diffusion-xl-lightning" data-i18n="modelSdxlLightning">Stable Diffusion XL Lightning (快速)</option>
+                    <option value="@cf/lykon/dreamshaper-8-lcm" data-i18n="modelDreamshaper">DreamShaper 8 LCM (动漫风格)</option>
+                </select>
+                <p class="model-description" data-i18n="modelDescription">
+                    <b>Stable Diffusion XL:</b> 高质量通用模型，适合各种场景。<br>
+                    <b>Stable Diffusion XL Lightning:</b> 速度极快，适合需要快速迭代的场景。<br>
+                    <b>DreamShaper 8 LCM:</b> 经过优化的动漫风格模型。
+                </p>
+            </div>
+            <div class="form-group">
+                <input type="text" id="prompt" name="prompt" placeholder="输入你的创意..." data-i18n-placeholder="promptPlaceholder" required>
+            </div>
+            <button type="submit" data-i18n="submitButton">生成图片</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const i18n = {
+            zh: {
+                title: 'AI 文生图',
+                modelLabel: '选择模型:',
+                modelSdxl: 'Stable Diffusion XL (通用)',
+                modelSdxlLightning: 'Stable Diffusion XL Lightning (快速)',
+                modelDreamshaper: 'DreamShaper 8 LCM (动漫风格,但是丑)',
+                modelDescription: '<b>Stable Diffusion XL:</b> 高质量通用模型，适合各种场景。<br><b>Stable Diffusion XL Lightning:</b> 速度极快，适合需要快速迭代的场景。<br><b>DreamShaper 8 LCM:</b> 经过优化的动漫风格模型(没有通用好看)。',
+                promptPlaceholder: '输入你的创意...',
+                submitButton: '生成图片',
+                loading: '正在翻译并生成中，请稍候...',
+                translatedTo: '已翻译为',
+                generationFailed: '生成失败',
+                policyViolation: '生成失败: 输入内容可能违反了使用政策，请修改后重试。',
+                imageLoadFailed: '图片加载失败。'
+            },
+            en: {
+                title: 'AI Text-to-Image',
+                modelLabel: 'Select Model:',
+                modelSdxl: 'Stable Diffusion XL (General)',
+                modelSdxlLightning: 'Stable Diffusion XL Lightning (Fast)',
+                modelDreamshaper: 'DreamShaper 8 LCM (Anime Style)',
+                modelDescription: '<b>Stable Diffusion XL:</b> High-quality general model, suitable for various scenarios.<br><b>Stable Diffusion XL Lightning:</b> Extremely fast, suitable for rapid iteration.<br><b>DreamShaper 8 LCM:</b> Optimized model for anime style.',
+                promptPlaceholder: 'Enter your creative ideas...',
+                submitButton: 'Generate Image',
+                loading: 'Translating and generating, please wait...',
+                translatedTo: 'Translated to',
+                generationFailed: 'Generation Failed',
+                policyViolation: 'Generation failed: The input may violate the usage policy. Please modify and try again.',
+                imageLoadFailed: 'Image failed to load.'
+            }
+        };
+
+        let currentLang = 'zh';
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            document.title = i18n[lang].title;
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.innerHTML = i18n[lang][key];
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                el.placeholder = i18n[lang][key];
+            });
+
+            document.getElementById('lang-zh').classList.toggle('active', lang === 'zh');
+            document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+        }
+
+        document.getElementById('lang-zh').addEventListener('click', () => setLanguage('zh'));
+        document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
+
+        // Set initial language
+        const userLang = navigator.language || navigator.userLanguage;
+        setLanguage(localStorage.getItem('lang') || (userLang.startsWith('zh') ? 'zh' : 'en'));
+
+        // Theme switcher logic
+        const themeToggle = document.getElementById('theme-toggle');
+        const body = document.body;
+
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                body.classList.add('dark-mode');
+                themeToggle.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.remove('dark-mode');
+                themeToggle.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
+            setTheme(newTheme);
+        });
+
+        // Set initial theme
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem('theme');
+        setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+
+        document.getElementById('image-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const prompt = document.getElementById('prompt').value;
+            const model = document.getElementById('model').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = '正在翻译并生成中，请稍候...';
+
+            try {
+                const response = await fetch('/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt, model })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                }
+
+                const translatedPrompt = decodeURIComponent(response.headers.get('X-Translated-Prompt') || '');
+                const imageBlob = await response.blob();
+                const imageUrl = URL.createObjectURL(imageBlob);
+
+                resultDiv.innerHTML = ''; // Clear loading message
+
+                // Display translated prompt
+                if (translatedPrompt) {
+                    const promptText = document.createElement('p');
+                    promptText.style.color = '#555';
+                    promptText.style.fontSize = '14px';
+                    promptText.innerHTML = `${i18n[currentLang].translatedTo}: <strong>${translatedPrompt}</strong>`;
+                    resultDiv.appendChild(promptText);
+                }
+                
+                const img = document.createElement('img');
+                img.alt = "Generated Image";
+                
+                img.onload = () => {
+                    // Check image dimensions for content moderation
+                    if (img.naturalWidth < 100) {
+                        resultDiv.innerHTML = i18n[currentLang].policyViolation;
+                        URL.revokeObjectURL(imageUrl);
+                    }
+                };
+                
+                img.onerror = () => {
+                    resultDiv.innerHTML = i18n[currentLang].imageLoadFailed;
+                };
+
+                resultDiv.appendChild(img);
+                img.src = imageUrl; // Set src after appending to DOM
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `${i18n[currentLang].generationFailed}: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

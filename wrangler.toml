@@ -1,0 +1,7 @@
+name = "workers-ai"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+account_id = "528ab038514f3b3461ae62fd0393caf4" # 请替换为你的account_id
+
+[ai]
+binding = "AI"
