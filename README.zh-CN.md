@@ -30,8 +30,8 @@
 
 1.  **克隆项目**
     ```bash
-    git clone [Your-Repo-URL]
-    cd [Your-Repo-Directory]
+    git clone https://github.com/Juicy-awa/workers-ai-generator.git
+    cd workers-ai-generator
     ```
 
 2.  **安装依赖**

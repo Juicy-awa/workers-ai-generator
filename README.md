@@ -30,8 +30,8 @@ This is a Text-to-Image application built with Cloudflare Workers and Workers AI
 
 1.  **Clone the project**
     ```bash
-    git clone [Your-Repo-URL]
-    cd [Your-Repo-Directory]
+    git clone https://github.com/Juicy-awa/workers-ai-generator.git
+    cd workers-ai-generator
     ```
 
 2.  **Install dependencies**
